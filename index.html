@@ -96,7 +96,7 @@ table.t th{background:var(--tint);color:var(--pri)}
   <h2>① 选择课程与级别</h2>
   <div class="row">
    <label class="f">课程</label>
-   <select id="course" onchange="fillLevels()">
+   <select id="course" onchange="fillLevels();fillVoiceSel()">
     <option value="cn">对外汉语（面向外国学生，115 课）</option>
     <option value="en">英语课程（面向国内学习者，115 课）</option>
    </select>
@@ -127,6 +127,12 @@ table.t th{background:var(--tint);color:var(--pri)}
     <option value="seq">课本顺序</option>
    </select>
   </div>
+  <div class="row" style="margin-top:10px">
+   <label class="f">音色</label>
+   <select id="voiceSel" onchange="saveVoice()" style="flex:1;min-width:200px"></select>
+   <button class="btn ghost small" onclick="tryVoice()">🔊 试听</button>
+  </div>
+  <p class="meta" id="voiceMeta" style="margin:4px 0 0"></p>
   <div class="row" style="margin-top:14px">
    <button class="btn" onclick="startStudy()">▶ 开始训练</button>
    <button class="btn ghost" onclick="show('browse')">📖 词表浏览</button>
@@ -254,14 +260,17 @@ function refreshMeta(){
 
 /* ================== SPEAK ================== */
 let VOICES=[];
-function loadVoices(){ VOICES=speechSynthesis.getVoices(); }
+function loadVoices(){ VOICES=speechSynthesis.getVoices(); if(typeof fillVoiceSel==="function" && document.getElementById("voiceSel")) try{fillVoiceSel();}catch(e){} }
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
-function speak(text, lang){
+function speak(text, lang, course){
   if(!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(text);
   u.lang=lang||"en-US";
-  const v=VOICES.find(v=>v.lang===u.lang)||VOICES.find(v=>v.lang.startsWith(u.lang.slice(0,2)));
+  const base = lang&&lang.startsWith("en") ? "en" : (/hk|yue/i.test(lang||"") ? "yue" : "cn");
+  const uri = localStorage.getItem("fc_voice_"+(course||base));
+  let v = uri ? VOICES.find(x=>x.voiceURI===uri) : null;
+  if(!v) v = VOICES.find(v=>v.lang===u.lang) || VOICES.find(v=>v.lang.startsWith(u.lang.slice(0,2)));
   if(v) u.voice=v; u.rate=0.9;
   speechSynthesis.speak(u);
 }
@@ -479,11 +488,56 @@ function frCelebrate(ok, heard){
   try{ speak(ok ? "Great job!" : "Good try!", "en-US"); }catch(e){}
 }
 
+/* ================== VOICE PICKER ================== */
+function voiceKey(c){ return "fc_voice_"+c; }
+function fillVoiceSel(){
+  const c=document.getElementById("course").value;
+  const sel=document.getElementById("voiceSel");
+  const meta=document.getElementById("voiceMeta");
+  const base = c==="en" ? "en" : "zh";
+  let list = VOICES.filter(v=>v.lang.toLowerCase().startsWith(base));
+  if(c==="yue"){
+    const hk = list.filter(v=>/hk|yue/i.test(v.lang+v.name));
+    if(hk.length) list = hk;
+  }
+  sel.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = ""; auto.textContent = "自动（系统默认匹配）";
+  sel.appendChild(auto);
+  for(const v of list){
+    const o = document.createElement("option");
+    o.value = v.voiceURI;
+    o.textContent = v.name + " (" + v.lang + (v.localService ? "" : ", 在线") + ")";
+    sel.appendChild(o);
+  }
+  const saved = localStorage.getItem(voiceKey(c));
+  if(saved){ sel.value = saved; if(sel.value !== saved) sel.value = ""; }
+  if(!list.length){
+    sel.disabled = true;
+    meta.textContent = "本浏览器暂无该语言的语音包——可在系统设置添加中文/英语语音，或改用 Edge 浏览器（含在线音色）。";
+  } else {
+    sel.disabled = false;
+    meta.textContent = "共 " + list.length + " 个可用音色（当前浏览器）· 选择后本课程固定使用";
+  }
+}
+function saveVoice(){
+  const c=document.getElementById("course").value;
+  const v=document.getElementById("voiceSel").value;
+  if(v) localStorage.setItem(voiceKey(c), v); else localStorage.removeItem(voiceKey(c));
+  toast("音色已保存");
+}
+function tryVoice(){
+  const c=document.getElementById("course").value;
+  const sample = c==="en" ? "Hello! This is a voice test." : (c==="yue" ? "你好，一齊嚟學粵語啦！" : "你好，一起学粤语！");
+  const lang = c==="en" ? "en-US" : (c==="yue" ? "zh-HK" : "zh-CN");
+  speak(sample, lang, c);
+}
+
 /* init */
 if (typeof VOCAB_DB !== "undefined" && VOCAB_DB && VOCAB_DB.courses) {
   DB = VOCAB_DB;
   fillCourses("course"); fillCourses("bCourse");
-  fillLevels(); fillLevels("b"); renderBrowse(); refreshMeta();
+  fillLevels(); fillLevels("b"); renderBrowse(); refreshMeta(); fillVoiceSel();
 } else {
   document.body.innerHTML = '<div style="padding:40px;text-align:center">未找到词库 vocab_db.js —— 请与 index.html 放在同一目录，或先运行 build_vocab_db.py 生成。</div>';
 }
