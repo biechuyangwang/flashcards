@@ -48,6 +48,22 @@ select{padding:8px 10px;border:1px solid #d8dee7;border-radius:8px;font-size:14p
 .grade button{flex:1;border:none;border-radius:12px;padding:13px 0;font-size:15px;cursor:pointer;color:#fff;font-weight:600}
 .g0{background:#C0392B}.g1{background:#C9932B}.g2{background:#2E8B57}
 .grade button:hover{filter:brightness(1.08)}
+/* ---- follow-read 跟读 ---- */
+.fr{margin-top:10px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.fr button{border:none;border-radius:10px;padding:10px 18px;font-size:14px;cursor:pointer;color:#fff;background:var(--pri2)}
+.fr button.rec{background:var(--bad);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.fr .heard{font-size:13px;color:var(--muted)}
+.pop{position:relative}
+@keyframes popok{0%{transform:scale(1)}30%{transform:scale(1.12)}60%{transform:scale(.97)}100%{transform:scale(1)}}
+.card.good{animation:popok .6s ease}
+.spark{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none;z-index:5}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+.badge{position:absolute;top:38%;left:50%;transform:translate(-50%,-50%);font-size:64px;z-index:6;pointer-events:none}
+@keyframes badgeIn{0%{transform:translate(-50%,-50%) scale(.3);opacity:0}60%{transform:translate(-50%,-50%) scale(1.25);opacity:1}100%{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.badge.in{animation:badgeIn .5s ease}
+.stars{position:absolute;top:60%;left:50%;transform:translateX(-50%);font-size:26px;z-index:6;pointer-events:none}
+
 .bar{height:8px;background:#e5e9f0;border-radius:4px;overflow:hidden;margin:6px 0 2px}
 .bar i{display:block;height:100%;background:var(--pri);transition:width .3s}
 .prog{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}
@@ -284,7 +300,8 @@ function renderCard(){
      ${m2?`<span class="pos">${esc(m2)}</span>`:""}
      <div class="mean">${esc(m1||"—")}</div>
      ${sub?`<div class="py">${esc(sub)}</div>`:""}
-     <button class="speak" onclick="event.stopPropagation();speakCard()">🔊</button></div>`;
+     <button class="speak" onclick="event.stopPropagation();speakCard()">🔊</button>
+     <div class="fr" id="frBox"></div></div>`;
   document.getElementById("grades").classList.add("hidden");
   if(sessionDir==="rec") speak(front, CFG[curCourse].lang);
 }
@@ -292,6 +309,7 @@ function flipCard(){
   if(flipped) return;
   flipped=true; document.getElementById("card").classList.add("flip");
   document.getElementById("grades").classList.remove("hidden");
+  frBox();
 }
 function speakCard(){
   const it=deck[di]; if(!it) return;
@@ -372,6 +390,93 @@ function importProgress(inp){
   catch(e){ toast("文件格式错误"); } }; r.readAsText(f); inp.value="";
 }
 function esc(s){ return (s||"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+
+/* ================== FOLLOW-READ 跟读 ================== */
+let rec = null, recTarget = null, recBusy = false;
+function norm(s){ return (s||"").toLowerCase().replace(/[^a-z一-鿿]/g,""); }
+function sim(a,b){
+  a=norm(a); b=norm(b);
+  if(!a||!b) return 0;
+  if(a===b) return 1;
+  const m=a.length, n=b.length, dp=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)
+    dp[i][j]=Math.min(dp[i-1][j]+1,dp[i][j-1]+1,dp[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return 1 - dp[m][n]/Math.max(m,n);
+}
+function frBox(){
+  const box=document.getElementById("frBox");
+  if(!box) return null;
+  const it=deck[di];
+  box.innerHTML = recBusy
+    ? `<button class="rec" onclick="event.stopPropagation();frStop()">⏹ 正在听…点此停止</button><span class="heard">请大声跟读</span>`
+    : `<button onclick="event.stopPropagation();frStart('${esc(it.w).replace(/'/g,"'")}')">🎤 跟读</button><span class="heard">读对有惊喜</span>`;
+  return box;
+}
+function frStart(target){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast("当前浏览器不支持语音识别，请用 Chrome/Edge"); return; }
+  if(recBusy) return;
+  recTarget = target;
+  try{
+    rec = new SR();
+    rec.lang = curCourse==="cn" ? "zh-CN" : "en-US";
+    rec.interimResults = false; rec.maxAlternatives = 5;
+    recBusy = true; frBox();
+    rec.onresult = e => {
+      const alts = [...e.results[0]].map(r=>r.transcript);
+      frJudge(alts);
+    };
+    rec.onerror = ev => { recBusy=false; frBox();
+      toast(ev.error==="not-allowed" ? "需要麦克风权限——浏览器地址栏允许后重试" : "没听清，再试一次（"+ev.error+"）"); };
+    rec.onend = () => { if(recBusy){ recBusy=false; frBox(); } };
+    rec.start();
+  }catch(e){ recBusy=false; frBox(); toast("识别启动失败：" + e.message); }
+}
+function frStop(){ try{ rec.stop(); }catch(e){} }
+function frJudge(alts){
+  recBusy=false;
+  const best = Math.max(...alts.map(a=>sim(a, recTarget)));
+  const heard = alts[0] || "";
+  frBox();
+  const box=document.getElementById("frBox");
+  if(best >= 0.75){ frCelebrate(true, heard); }
+  else if(best >= 0.5){
+    box.innerHTML = `<span class="heard">接近了！听到「${esc(heard)}」— 再来一次</span>` +
+      `<button onclick="event.stopPropagation();frStart('${esc(recTarget).replace(/'/g,"'")}')">🎤 再试</button>`;
+  } else {
+    box.innerHTML = `<span class="heard">听到「${esc(heard)||"（空）"}」≠ ${esc(recTarget)} — 看口型再试</span>` +
+      `<button onclick="event.stopPropagation();frStart('${esc(recTarget).replace(/'/g,"'")}')">🎤 再试</button>`;
+  }
+}
+function frCelebrate(ok, heard){
+  const card = document.getElementById("card");
+  card.classList.remove("good"); void card.offsetWidth; card.classList.add("good");
+  // 徽章
+  const b = document.createElement("div");
+  b.className = "badge in"; b.textContent = ok ? "✅" : "👍";
+  card.appendChild(b);
+  // 星星
+  const st = document.createElement("div");
+  st.className = "stars"; st.textContent = "⭐️".repeat(Math.max(1, Math.round(1 + (ok?2:1))));
+  card.appendChild(st);
+  // 烟花粒子
+  const colors = ["#C9932B","#2E8B57","#1F4E79","#E67E22","#8E44AD"];
+  for(let i=0;i<24;i++){
+    const sp = document.createElement("span");
+    sp.className = "spark";
+    const ang = Math.random()*Math.PI*2, dist = 90+Math.random()*140;
+    sp.style.left = "50%"; sp.style.top = "45%";
+    sp.style.background = colors[i%colors.length];
+    sp.style.setProperty("--dx", Math.cos(ang)*dist+"px");
+    sp.style.setProperty("--dy", Math.sin(ang)*dist+"px");
+    sp.style.animation = `fly ${0.7+Math.random()*0.5}s ease-out forwards`;
+    card.appendChild(sp);
+  }
+  setTimeout(()=>{ [b,st].forEach(x=>x.remove()); card.querySelectorAll(".spark").forEach(x=>x.remove()); }, 1600);
+  try{ speak(ok ? "Great job!" : "Good try!", "en-US"); }catch(e){}
+}
 
 /* init */
 if (typeof VOCAB_DB !== "undefined" && VOCAB_DB && VOCAB_DB.courses) {
