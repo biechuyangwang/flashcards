@@ -280,7 +280,7 @@ function startStudy(){
     if(fa!==fb) return fa-fb;
     return (da||9e12)-(db||9e12); });
   deck=items; di=0; wrongBuf=[]; flipped=false;
-  document.getElementById("stMode").textContent=(curCourse==="cn"?"对外汉语":"英语")+" · "+(sessionDir==="rec"?"认·忆":"产出");
+  document.getElementById("stMode").textContent=(curCourse==="cn"?"对外汉语":curCourse==="yue"?"粤语":"英语")+" · "+(sessionDir==="rec"?"认·忆":"产出");
   show("study"); renderCard();
 }
 function renderCard(){
