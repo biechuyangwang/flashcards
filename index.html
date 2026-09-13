@@ -83,7 +83,7 @@ table.t th{background:var(--tint);color:var(--pri)}
 <body>
 <script src="vocab_db.js"></script>
 <header>
- <h1>📇 生词训练卡</h1><span style="font-size:12px;opacity:.85">Vocabulary Flashcards · 汉语/英语双课程</span>
+ <h1>📇 生词训练卡</h1><span style="font-size:12px;opacity:.85">Vocabulary Flashcards · 汉语/英语/粤语三课程</span>
  <span class="sp"></span>
  <button class="hbtn" onclick="location.hash='';show('home')">🏠 首页</button>
  <button class="hbtn" onclick="exportProgress()">⬇ 导出进度</button>
@@ -187,7 +187,8 @@ catch(e){ /* 词库脚本尚未加载（加载顺序在页面脚本之后），�
 
 const CN = {label:"对外汉语", front:i=>i.w, frontSub:i=>i.py||"", back:i=>[i.en, i.pos], say:i=>i.w, lang:"zh-CN", fa:"英文", fb:"中文"};
 const EN = {label:"英语课程", front:i=>i.w, frontSub:i=>"", back:i=>[i.cn, i.pos], say:i=>i.w, lang:"en-US", fa:"中文", fb:"英文"};
-const CFG = {cn:CN, en:EN};
+const YUE = {label:"粤语课程", front:i=>i.w, frontSub:i=>i.py||"", back:i=>[i.cn, i.pos], say:i=>i.w, lang:"zh-HK", fa:"普通话", fb:"粤语"};
+const CFG = {cn:CN, en:EN, yue:YUE};
 
 /* ================== SRS ================== */
 const IV = [60, 43200, 259200]; // 不认识1分钟 / 模糊12小时 / 认识3天(秒)
@@ -216,11 +217,11 @@ function toast(t){ const el=document.getElementById("toast"); el.textContent=t; 
 /* ================== SELECTS ================== */
 function levelsOf(c){ return Object.keys(DB.courses[c]||{}).map(Number).filter(n=>(DB.courses[c][n]||[]).length).sort((a,b)=>a-b); }
 function fillCourses(sel){ const s=document.getElementById(sel); s.innerHTML="";
-  for(const [v,t] of [["cn","对外汉语 115 课"],["en","英语课程 115 课"]]){ const o=document.createElement("option"); o.value=v; o.textContent=t; s.appendChild(o);} }
+  for(const [v,t] of [["cn","对外汉语 115 课"],["en","英语课程 115 课"],["yue","粤语课程 115 课"]]){ const o=document.createElement("option"); o.value=v; o.textContent=t; s.appendChild(o);} }
 function fillLevels(sel){
   const c = document.getElementById(sel ? "bCourse" : "course").value;
   const s = document.getElementById(sel ? "bLevel" : "level"); s.innerHTML="";
-  for(const lv of levelsOf(c)){ const o=document.createElement("option"); o.value=lv; o.textContent=(c==="cn"?"汉语 ":"英语 ")+lv+" 级"; s.appendChild(o); }
+  for(const lv of levelsOf(c)){ const o=document.createElement("option"); o.value=lv; o.textContent=(c==="cn"?"汉语 ":c==="en"?"英语 ":"粤语 ")+lv+" 级"; s.appendChild(o); }
   fillLessons(sel);
 }
 function fillLessons(sel){
@@ -421,7 +422,7 @@ function frStart(target){
   recTarget = target;
   try{
     rec = new SR();
-    rec.lang = curCourse==="cn" ? "zh-CN" : "en-US";
+    rec.lang = curCourse==="cn" ? "zh-CN" : (curCourse==="yue" ? "zh-HK" : "en-US");
     rec.interimResults = false; rec.maxAlternatives = 5;
     recBusy = true; frBox();
     rec.onresult = e => {
