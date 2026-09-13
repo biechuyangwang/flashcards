@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>生词训练卡 · Vocabulary Flashcards</title>
+<style>
+:root{--pri:#1F4E79;--pri2:#2E6DA4;--tint:#E8EFF6;--ink:#23272F;--muted:#8A8F98;--acc:#C9932B;
+ --ok:#2E8B57;--bad:#C0392B;--bg:#F5F7FA;--card:#FFFFFF;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink);font-size:15px}
+header{background:var(--pri);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;font-weight:700}
+header .sp{flex:1}
+.hbtn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}
+.hbtn:hover{background:rgba(255,255,255,.25)}
+main{max-width:860px;margin:0 auto;padding:16px}
+.panel{background:var(--card);border-radius:var(--r);box-shadow:0 1px 4px rgba(0,0,0,.06);padding:16px;margin-bottom:14px}
+h2{font-size:15px;color:var(--pri);margin:0 0 10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label.f{font-size:13px;color:var(--muted)}
+select{padding:8px 10px;border:1px solid #d8dee7;border-radius:8px;font-size:14px;background:#fff;min-width:130px}
+.btn{border:none;border-radius:10px;padding:10px 18px;font-size:15px;cursor:pointer;background:var(--pri);color:#fff}
+.btn:hover{background:var(--pri2)}
+.btn.ghost{background:#fff;color:var(--pri);border:1px solid var(--pri)}
+.btn.small{padding:6px 12px;font-size:13px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:default}
+.meta{font-size:12.5px;color:var(--muted);line-height:1.7}
+/* card */
+.stage{perspective:1200px;margin:8px 0}
+.card{position:relative;width:100%;min-height:300px;border-radius:18px;background:var(--card);
+ box-shadow:0 4px 18px rgba(31,78,121,.14);cursor:pointer;transition:transform .5s;transform-style:preserve-3d;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:22px;user-select:none}
+.card.flip{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;backface-visibility:hidden}
+.face.back{transform:rotateY(180deg)}
+.tag{position:absolute;top:12px;left:14px;font-size:12px;color:var(--muted)}
+.tag.r{left:auto;right:14px}
+.big{font-size:44px;font-weight:700;line-height:1.25}
+.big.en{font-family:Georgia,"Times New Roman",serif}
+.py{font-size:19px;color:var(--pri)}
+.pos{font-size:13px;color:var(--acc);border:1px solid var(--acc);border-radius:6px;padding:1px 8px}
+.mean{font-size:22px;color:var(--ink)}
+.hint{font-size:12.5px;color:var(--muted)}
+.speak{border:none;background:var(--tint);color:var(--pri);border-radius:50%;width:44px;height:44px;font-size:19px;cursor:pointer}
+.speak:hover{background:#d7e4f2}
+.grade{display:flex;gap:10px;margin-top:14px}
+.grade button{flex:1;border:none;border-radius:12px;padding:13px 0;font-size:15px;cursor:pointer;color:#fff;font-weight:600}
+.g0{background:#C0392B}.g1{background:#C9932B}.g2{background:#2E8B57}
+.grade button:hover{filter:brightness(1.08)}
+.bar{height:8px;background:#e5e9f0;border-radius:4px;overflow:hidden;margin:6px 0 2px}
+.bar i{display:block;height:100%;background:var(--pri);transition:width .3s}
+.prog{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t td,table.t th{border:1px solid #e2e6ec;padding:7px 9px;text-align:left}
+table.t th{background:var(--tint);color:var(--pri)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+ padding:9px 18px;border-radius:10px;font-size:13.5px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:9}
+.toast.on{opacity:.94}
+.dirs{display:flex;gap:14px;flex-wrap:wrap;font-size:14px}
+.dirs label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.hidden{display:none}
+@media(max-width:560px){.big{font-size:34px}.card{min-height:260px}main{padding:10px}.panel{padding:12px}}
+</style>
+</head>
+<body>
+<script src="vocab_db.js"></script>
+<header>
+ <h1>📇 生词训练卡</h1><span style="font-size:12px;opacity:.85">Vocabulary Flashcards · 汉语/英语双课程</span>
+ <span class="sp"></span>
+ <button class="hbtn" onclick="location.hash='';show('home')">🏠 首页</button>
+ <button class="hbtn" onclick="exportProgress()">⬇ 导出进度</button>
+ <label class="hbtn" style="display:inline-flex;gap:6px;align-items:center">导入<input type="file" id="impFile" accept=".json" style="display:none" onchange="importProgress(this)"></label>
+</header>
+<main>
+<!-- ============ HOME ============ -->
+<div id="p-home">
+ <div class="panel">
+  <h2>① 选择课程与级别</h2>
+  <div class="row">
+   <label class="f">课程</label>
+   <select id="course" onchange="fillLevels()">
+    <option value="cn">对外汉语（面向外国学生，115 课）</option>
+    <option value="en">英语课程（面向国内学习者，115 课）</option>
+   </select>
+   <label class="f">级别</label>
+   <select id="level" onchange="fillLessons()"></select>
+   <label class="f">课次</label>
+   <select id="lesson" onchange="refreshMeta()"></select>
+  </div>
+  <p class="meta" id="meta" style="margin:10px 0 0"></p>
+ </div>
+ <div class="panel">
+  <h2>② 训练设置</h2>
+  <div class="dirs">
+   <label><input type="radio" name="dir" value="rec" checked> 认 · 看<b id="dA">英文</b>忆<b id="dB">中文</b>（默认）</label>
+   <label><input type="radio" name="dir" value="pro"> 产出 · 看<b id="dC">中文</b>说<b id="dD">英文</b></label>
+  </div>
+  <div class="row" style="margin-top:10px">
+   <label class="f">范围</label>
+   <select id="scope">
+    <option value="lesson">仅当前课</option>
+    <option value="level" selected>整个级别</option>
+    <option value="all">全部级别</option>
+   </select>
+   <label class="f">顺序</label>
+   <select id="order">
+    <option value="smart" selected>智能（到期优先）</option>
+    <option value="random">随机</option>
+    <option value="seq">课本顺序</option>
+   </select>
+  </div>
+  <div class="row" style="margin-top:14px">
+   <button class="btn" onclick="startStudy()">▶ 开始训练</button>
+   <button class="btn ghost" onclick="show('browse')">📖 词表浏览</button>
+   <button class="btn ghost" onclick="show('stats')">📊 学习统计</button>
+   <button class="btn ghost" onclick="resetCurrent()">🧹 清除本范围进度</button>
+  </div>
+  <p class="meta" style="margin-bottom:0">评分规则：认识（3 天后再见）· 模糊（10 分钟后）· 不认识（1 分钟后）。数据保存在本机浏览器 localStorage，可导出备份。</p>
+ </div>
+</div>
+<!-- ============ STUDY ============ -->
+<div id="p-study" class="hidden">
+ <div class="panel" style="padding:10px 16px">
+  <div class="prog"><span id="stPos">0 / 0</span><span id="stMode"></span></div>
+  <div class="bar"><i id="stBar" style="width:0%"></i></div>
+ </div>
+ <div class="stage"><div class="card" id="card" onclick="flipCard()"></div></div>
+ <div class="grade hidden" id="grades">
+  <button class="g0" onclick="grade(0)">😶 不认识</button>
+  <button class="g1" onclick="grade(1)">🤔 模糊</button>
+  <button class="g2" onclick="grade(2)">😀 认识</button>
+ </div>
+ <div class="row" style="margin-top:12px">
+  <button class="btn ghost small" onclick="quitStudy()">← 退出</button>
+  <button class="btn ghost small" onclick="speakCard()">🔊 读出来</button>
+  <button class="btn ghost small" onclick="replayWrong()">🔁 重刷本轮错词</button>
+ </div>
+</div>
+<!-- ============ BROWSE ============ -->
+<div id="p-browse" class="hidden">
+ <div class="panel">
+  <h2>词表浏览</h2>
+  <div class="filters">
+   <select id="bCourse" onchange="fillLevels('b');renderBrowse()"></select>
+   <select id="bLevel" onchange="fillLessons('b');renderBrowse()"></select>
+   <select id="bLesson" onchange="renderBrowse()"></select>
+   <input id="bQ" placeholder="🔍 搜索词/释义…" oninput="renderBrowse()" style="flex:1;min-width:150px;padding:8px 10px;border:1px solid #d8dee7;border-radius:8px">
+  </div>
+  <div style="overflow:auto;max-height:60vh"><table class="t" id="bTable"></table></div>
+  <p class="meta">共 <span id="bCount">0</span> 条 · 点击行首 🔊 可发音</p>
+ </div>
+ <button class="btn ghost" onclick="show('home')">← 返回</button>
+</div>
+<!-- ============ STATS ============ -->
+<div id="p-stats" class="hidden">
+ <div class="panel">
+  <h2>学习统计（本机）</h2>
+  <div id="statBody"></div>
+ </div>
+ <button class="btn ghost" onclick="show('home')">← 返回</button>
+</div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+/* ================== DATA ================== */
+let DB = null;
+try { DB = VOCAB_DB; }
+catch(e){ /* 词库脚本尚未加载（加载顺序在页面脚本之后），等 DOMContentLoaded 后重试 */ }
+
+const CN = {label:"对外汉语", front:i=>i.w, frontSub:i=>i.py||"", back:i=>[i.en, i.pos], say:i=>i.w, lang:"zh-CN", fa:"英文", fb:"中文"};
+const EN = {label:"英语课程", front:i=>i.w, frontSub:i=>"", back:i=>[i.cn, i.pos], say:i=>i.w, lang:"en-US", fa:"中文", fb:"英文"};
+const CFG = {cn:CN, en:EN};
+
+/* ================== SRS ================== */
+const IV = [60, 43200, 259200]; // 不认识1分钟 / 模糊12小时 / 认识3天(秒)
+function loadP(){ try{ return JSON.parse(localStorage.getItem("fc_progress")||"{}"); }catch(e){ return {}; } }
+function saveP(){ localStorage.setItem("fc_progress", JSON.stringify(P)); }
+let P = loadP();
+const keyOf = (c,it)=> c+":"+it.lesson+":"+it.w;
+function statOf(k){ const r=P[k]; if(!r) return {n:0, due:0, last:0};
+  return {n:r.n||0, due:r.due||0, last:r.last||0}; }
+function gradeKey(k,g){
+  const now = Math.floor(Date.now()/1000);
+  const r = P[k] || {n:0};
+  if(g===0){ r.n = Math.max(0,(r.n||0)-1); r.due = now+10; }
+  else if(g===1){ r.n = r.n||0; r.due = now+600; }
+  else { r.n = (r.n||0)+1; r.due = now + IV[2] * Math.max(1, r.n); }
+  r.last = now; P[k]=r; saveP();
+}
+
+/* ================== NAV ================== */
+function show(p){
+  for(const x of ["home","study","browse","stats"]) document.getElementById("p-"+x).classList.toggle("hidden", x!==p);
+  if(p==="stats") renderStats();
+}
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("on"); setTimeout(()=>el.classList.remove("on"),1800); }
+
+/* ================== SELECTS ================== */
+function levelsOf(c){ return Object.keys(DB.courses[c]||{}).map(Number).filter(n=>(DB.courses[c][n]||[]).length).sort((a,b)=>a-b); }
+function fillCourses(sel){ const s=document.getElementById(sel); s.innerHTML="";
+  for(const [v,t] of [["cn","对外汉语 115 课"],["en","英语课程 115 课"]]){ const o=document.createElement("option"); o.value=v; o.textContent=t; s.appendChild(o);} }
+function fillLevels(sel){
+  const c = document.getElementById(sel ? "bCourse" : "course").value;
+  const s = document.getElementById(sel ? "bLevel" : "level"); s.innerHTML="";
+  for(const lv of levelsOf(c)){ const o=document.createElement("option"); o.value=lv; o.textContent=(c==="cn"?"汉语 ":"英语 ")+lv+" 级"; s.appendChild(o); }
+  fillLessons(sel);
+}
+function fillLessons(sel){
+  const c=document.getElementById(sel ? "bCourse" : "course").value;
+  const lv=document.getElementById(sel ? "bLevel" : "level").value; const s=document.getElementById(sel ? "bLesson" : "lesson");
+  const lessons=[...new Set((DB.courses[c][lv]||[]).map(i=>i.lesson))].sort();
+  s.innerHTML='<option value="all">全部课次</option>';
+  for(const L of lessons){ const o=document.createElement("option"); o.value=L; o.textContent=L; s.appendChild(o); }
+  if(!sel) refreshMeta(); else renderBrowse();
+}
+function pool(){
+  const c=document.getElementById("course").value, lv=document.getElementById("level").value,
+        L=document.getElementById("lesson").value, scope=document.getElementById("scope").value;
+  let items = DB.courses[c][lv]||[];
+  if(scope==="lesson" || (scope==="level"&&false)) items = items.filter(i=>i.lesson===L);
+  if(scope==="lesson") items = items.filter(i=>i.lesson===L);
+  else if(scope==="all"){ items=[]; for(const l of levelsOf(c)) items=items.concat(DB.courses[c][l]); }
+  return items;
+}
+function refreshMeta(){
+  const c=document.getElementById("course").value, items=pool();
+  const now=Math.floor(Date.now()/1000);
+  let due=0, seen=0, mas=0;
+  for(const it of items){ const s=statOf(keyOf(c,it)); if(s.due>0&&s.due<=now) due++; if(s.n>0) seen++; if(s.n>=3) mas++; }
+  document.getElementById("meta").innerHTML =
+   `本范围 <b>${items.length}</b> 词 ｜ 待复习 <b style="color:var(--acc)">${due}</b> ｜ 已学 <b>${seen}</b> ｜ 掌握(≥3次) <b style="color:var(--ok)">${mas}</b>`;
+  const d1=document.getElementById("dA"), d2=document.getElementById("dB"), d3=document.getElementById("dC"), d4=document.getElementById("dD");
+  d1.textContent=CFG[c].fa; d2.textContent=CFG[c].fb; d3.textContent=CFG[c].fb; d4.textContent=CFG[c].fa;
+}
+
+/* ================== SPEAK ================== */
+let VOICES=[];
+function loadVoices(){ VOICES=speechSynthesis.getVoices(); }
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged=loadVoices; }
+function speak(text, lang){
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=lang||"en-US";
+  const v=VOICES.find(v=>v.lang===u.lang)||VOICES.find(v=>v.lang.startsWith(u.lang.slice(0,2)));
+  if(v) u.voice=v; u.rate=0.9;
+  speechSynthesis.speak(u);
+}
+
+/* ================== STUDY ================== */
+let deck=[], di=0, curCourse="cn", flipped=false, wrongBuf=[], sessionDir="rec";
+function startStudy(){
+  curCourse=document.getElementById("course").value;
+  sessionDir=document.querySelector('input[name="dir"]:checked').value;
+  let items=pool(); if(!items.length){ toast("此范围没有词，请换级别/课次"); return; }
+  const order=document.getElementById("order").value, now=Math.floor(Date.now()/1000);
+  if(order==="seq") items.sort((a,b)=>a.lesson<b.lesson?-1:a.lesson>b.lesson?1:0);
+  else if(order==="random") items.sort(()=>Math.random()-.5);
+  else items.sort((a,b)=>{ const da=statOf(keyOf(curCourse,a)).due, db=statOf(keyOf(curCourse,b)).due;
+    const fa=da>0&&da<=now?0:1, fb=db>0&&db<=now?0:1;
+    if(fa!==fb) return fa-fb;
+    return (da||9e12)-(db||9e12); });
+  deck=items; di=0; wrongBuf=[]; flipped=false;
+  document.getElementById("stMode").textContent=(curCourse==="cn"?"对外汉语":"英语")+" · "+(sessionDir==="rec"?"认·忆":"产出");
+  show("study"); renderCard();
+}
+function renderCard(){
+  const it=deck[di], cfg=CFG[curCourse];
+  document.getElementById("stPos").textContent=(di+1)+" / "+deck.length;
+  document.getElementById("stBar").style.width=(di/deck.length*100)+"%";
+  flipped=false;
+  const card=document.getElementById("card"); card.classList.remove("flip");
+  const showEn = sessionDir==="pro" ? cfg.fb==="中文" ? false : true : true;
+  const front = cfg.front(it), sub=cfg.frontSub(it);
+  const [m1,m2]=cfg.back(it);
+  card.innerHTML=`
+   <div class="face"><span class="tag">${it.lesson}</span><span class="tag r">${CFG[curCourse].label}</span>
+     <div class="big ${curCourse==="en"?"en":""}">${esc(front)}</div>
+     ${sub?`<div class="py">${esc(sub)}</div>`:""}
+     <div class="hint">👆 点击卡片看答案</div></div>
+   <div class="face back"><span class="tag">${it.lesson}</span>
+     ${m2?`<span class="pos">${esc(m2)}</span>`:""}
+     <div class="mean">${esc(m1||"—")}</div>
+     ${sub?`<div class="py">${esc(sub)}</div>`:""}
+     <button class="speak" onclick="event.stopPropagation();speakCard()">🔊</button></div>`;
+  document.getElementById("grades").classList.add("hidden");
+  if(sessionDir==="rec") speak(front, CFG[curCourse].lang);
+}
+function flipCard(){
+  if(flipped) return;
+  flipped=true; document.getElementById("card").classList.add("flip");
+  document.getElementById("grades").classList.remove("hidden");
+}
+function speakCard(){
+  const it=deck[di]; if(!it) return;
+  speak(it.w, CFG[curCourse].lang);
+}
+function grade(g){
+  const it=deck[di]; gradeKey(keyOf(curCourse,it), g);
+  if(g<2 && !wrongBuf.includes(it)) wrongBuf.push(it);
+  di++;
+  if(di>=deck.length){ finish(); return; }
+  renderCard();
+}
+function finish(){
+  const card=document.getElementById("card");
+  card.classList.remove("flip");
+  card.innerHTML=`<div class="face"><div class="big">🎉</div>
+   <div class="mean">本轮完成！共 ${deck.length} 词</div>
+   <div class="hint">本轮标记"不认识/模糊" ${wrongBuf.length} 词</div>
+   <div class="hint">进度已保存 · 可回首页重练（到期词会优先出现）</div></div>`;
+  document.getElementById("grades").classList.add("hidden");
+  document.getElementById("stPos").textContent="done";
+  document.getElementById("stBar").style.width="100%";
+  refreshMeta();
+}
+function replayWrong(){
+  if(!wrongBuf.length){ toast("本轮没有标记的错词"); return; }
+  deck=wrongBuf.slice(); wrongBuf=[]; di=0; renderCard(); toast("错词重刷 "+deck.length+" 词");
+}
+function quitStudy(){ show("home"); }
+
+/* ================== BROWSE ================== */
+function renderBrowse(){
+  const c=document.getElementById("bCourse").value, lv=document.getElementById("bLevel").value,
+        L=document.getElementById("bLesson").value, q=(document.getElementById("bQ").value||"").toLowerCase();
+  let items=(DB.courses[c][lv]||[]).slice();
+  if(L!=="all") items=items.filter(i=>i.lesson===L);
+  if(q) items=items.filter(i=>(i.w+" "+(i.py||"")+" "+(i.en||"")+" "+(i.cn||"")).toLowerCase().includes(q));
+  const cfg=CFG[c];
+  document.getElementById("bTable").innerHTML =
+   `<tr><th style="width:44px"></th><th>${c==="cn"?"词语 Word":"Word"}</th><th>${c==="cn"?"拼音":"词性"}</th><th>${c==="cn"?"词性":"中文"}</th><th>${c==="cn"?"英译":"课次"}</th><th>课次</th><th style="width:56px">已学</th></tr>`+
+   items.map(it=>{ const s=statOf(keyOf(c,it));
+     return `<tr><td><button class="play" onclick="speak('${esc(it.w).replace(/'/g,"\\'")}','${cfg.lang}')">🔊</button></td>
+      <td><b>${esc(it.w)}</b></td><td>${esc(c==="cn"?it.py||"":it.pos||"")}</td>
+      <td>${esc(c==="cn"?it.pos||"":it.cn)}</td><td>${esc(c==="cn"?it.en:"")}</td>
+      <td>${it.lesson}</td><td>${s.n?("⭐".repeat(Math.min(s.n,5))):""}</td></tr>`; }).join("")||
+   `<tr><td colspan="7" style="text-align:center;color:var(--muted)">无匹配</td></tr>`;
+  document.getElementById("bCount").textContent=items.length;
+}
+
+/* ================== STATS ================== */
+function renderStats(){
+  const now=Math.floor(Date.now()/1000); const rows=[];
+  for(const c of ["cn","en"]) for(const lv of levelsOf(c)) for(const it of DB.courses[c][lv]){
+    const s=statOf(keyOf(c,it)); if(s.n>0||s.due>0) rows.push({c,it,s});
+  }
+  const due=rows.filter(r=>r.s.due<=now).length;
+  const mas=rows.filter(r=>r.s.n>=3).length;
+  document.getElementById("statBody").innerHTML=
+   `<table class="t"><tr><th>已接触词条</th><th>待复习（已到期）</th><th>掌握（≥3 次）</th></tr>
+    <tr><td style="font-size:22px"><b>${rows.length}</b></td><td style="font-size:22px;color:var(--acc)"><b>${due}</b></td>
+    <td style="font-size:22px;color:var(--ok)"><b>${mas}</b></td></tr></table>
+    <p class="meta">评分会自动安排下次出现时间：不认识 10 分钟 · 模糊 12 小时 · 认识 3 天起（连续认识则间隔倍增）。</p>`;
+}
+/* reset */
+function resetCurrent(){
+  const c=document.getElementById("course").value, items=pool();
+  for(const it of items) delete P[keyOf(c,it)];
+  saveP(); refreshMeta(); toast("已清除 "+items.length+" 词的本范围进度");
+}
+function exportProgress(){
+  const blob=new Blob([JSON.stringify(P)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="flashcard_progress.json"; a.click(); toast("已导出 progress JSON");
+}
+function importProgress(inp){
+  const f=inp.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ try{ P=JSON.parse(r.result); saveP(); refreshMeta(); toast("进度已导入"); }
+  catch(e){ toast("文件格式错误"); } }; r.readAsText(f); inp.value="";
+}
+function esc(s){ return (s||"").toString().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+/* init */
+if (typeof VOCAB_DB !== "undefined" && VOCAB_DB && VOCAB_DB.courses) {
+  DB = VOCAB_DB;
+  fillCourses("course"); fillCourses("bCourse");
+  fillLevels(); fillLevels("b"); renderBrowse(); refreshMeta();
+} else {
+  document.body.innerHTML = '<div style="padding:40px;text-align:center">未找到词库 vocab_db.js —— 请与 index.html 放在同一目录，或先运行 build_vocab_db.py 生成。</div>';
+}
+</script>
+</body>
+</html>
